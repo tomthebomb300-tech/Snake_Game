@@ -1,6 +1,9 @@
 #include <windows.h>
+#include <stdio.h>
 
 const char g_szClassName[] = "snakeWindow";
+const int WINDOW_HEIGHT = 800;
+const int WINDOW_WIDTH = 800;
 
 // Step 4: the Window Procedure
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
@@ -49,7 +52,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         g_szClassName,
         "Snake",
         WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, CW_USEDEFAULT, 800, 800,
+        CW_USEDEFAULT, CW_USEDEFAULT, WINDOW_WIDTH, WINDOW_HEIGHT,
         NULL, NULL, hInstance, NULL);
 
     if(hwnd == NULL){
@@ -61,8 +64,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
 
+    HDC window = GetDC(hwnd);
+    HBRUSH brush = CreateSolidBrush(RGB(0,255,0));
+    SelectObject(window, brush);
+    
     // Step 3: The Message Loop
     while(GetMessage(&Msg, NULL, 0, 0) > 0){
+        //left, top, right, bottom  
+        Rectangle(window, 0,700,50,800);
         TranslateMessage(&Msg);
         DispatchMessage(&Msg);
     }
