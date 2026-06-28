@@ -2,14 +2,17 @@
 #include <stdio.h>
 
 const char g_szClassName[] = "snakeWindow";
-const int WINDOW_HEIGHT = 800;
-const int WINDOW_WIDTH = 800;
+const int CLIENT_AREA_HEIGHT = 800;
+const int CLIENT_AREA_WIDTH = 800;
+const int WINDOW_HEIGHT = CLIENT_AREA_HEIGHT + 43;
+const int WINDOW_WIDTH = CLIENT_AREA_WIDTH + 20;
 const int SQUARE_LENGTH = 50;
+const int PLAY_AREA_LENGTH = 500;
 
 //Colours of stuff
-const COLORREF backgroundColour = RGB(0,0,255);
-const COLORREF snakeColour = RGB(200,200,0);
-const COLORREF foodColour = RGB(255,0,0);
+const COLORREF BACKGROUND_COLOUR = RGB(0,0,0);
+const COLORREF SNAKE_COLOUR = RGB(200,200,0);
+const COLORREF FOOD_COLOUR = RGB(255,0,0);
 
 
 typedef struct square {
@@ -20,7 +23,7 @@ typedef struct square {
 Square head;
 
 void clearScreen(HWND hwnd){
-    HBRUSH backgroundBrush = CreateSolidBrush(backgroundColour);
+    HBRUSH backgroundBrush = CreateSolidBrush(BACKGROUND_COLOUR);
     RECT fullBackground;
     GetClientRect(hwnd, &fullBackground);
     FillRect(GetDC(hwnd), &fullBackground, backgroundBrush);
@@ -43,6 +46,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
             else if(wParam == VK_LEFT){
                 head.x = head.x - SQUARE_LENGTH;
             }
+        printf("x: %d, y: %d\n", head.x, head.y);
         clearScreen(hwnd);
         break;
         case WM_CLOSE:
@@ -62,7 +66,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     HWND hwnd;
     MSG Msg;
 
-    HBRUSH backgroundBrush = CreateSolidBrush(backgroundColour);
+    HBRUSH backgroundBrush = CreateSolidBrush(BACKGROUND_COLOUR);
 
     //Registering the Window Class
     wc.cbSize        = sizeof(WNDCLASSEX);
@@ -103,7 +107,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     UpdateWindow(hwnd);
 
     HDC hdc = GetDC(hwnd);
-    HBRUSH snakeBrush = CreateSolidBrush(snakeColour);
+    HBRUSH snakeBrush = CreateSolidBrush(SNAKE_COLOUR);
+
+    RECT r;
+    GetClientRect(hwnd, &r);
+    printf("left = %ld\n", r.left);
+    printf("top = %ld\n", r.top);
+    printf("right = %ld\n", r.right);
+    printf("bottom = %ld\n", r.bottom);
 
     
     head.x = 0;
@@ -119,9 +130,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             TranslateMessage(&Msg);
             DispatchMessage(&Msg);
         }
-
-        
-
 
         SelectObject(hdc, snakeBrush);
         Rectangle(hdc, head.x,head.y,head.x+SQUARE_LENGTH,head.y+SQUARE_LENGTH);
