@@ -2,6 +2,8 @@
 #include <stdio.h>
 
 const char g_szClassName[] = "snakeWindow";
+HWND hwnd;//handle to window
+HDC hdc;//handle of client area
 
 const int CLIENT_AREA_HEIGHT = 800; //Height playable area
 const int CLIENT_AREA_WIDTH = 800;  //Width playable area
@@ -17,15 +19,21 @@ const COLORREF BACKGROUND_COLOUR = RGB(0,0,0);
 const COLORREF SNAKE_COLOUR = RGB(200,200,0);
 const COLORREF FOOD_COLOUR = RGB(255,0,0);
 
+HBRUSH backgroundBrush;
+HBRUSH snakeBrush;
+HBRUSH foodBrush;
+
 
 typedef struct square {
     int x; //x coordinate upper left corner
     int y; //y coordinate upper left corner
 } Square;
 
-int game_score;
-Square head;
-Square food;
+typedef struct snakeSquare {
+    Square square; //details of square
+    Square lastSquare;//Prior position of square
+    struct snakeSquare* next; //next snake square if any.
+} SnakeSquare;
 
 typedef enum{
     NONE,
@@ -33,22 +41,79 @@ typedef enum{
     FOOD
 } CollisionType;
 
+typedef enum{
+    RIGHT,
+    LEFT,
+    UP,
+    DOWN
+} KEYDOWN;
 
+int game_score;
+SnakeSquare head;
+Square food;
+
+int key_down[sizeof(KEYDOWN)];
+
+
+
+
+
+
+void printSnake(){
+    printf("Last Square:   X: %d  Y: %d\n", head.lastSquare.x, head.lastSquare.y);
+    printf("Current Square:   X: %d Y: %d\n\n", head.square.x, head.square.y);
+
+    if(head.next != NULL){
+        SnakeSquare *node = head.next;
+        printf("Tail Last Square:   X: %d  Y: %d\n", node->lastSquare.x, node->lastSquare.y);
+        printf("Tail Current Square:   X: %d Y: %d\n\n", node->square.x, node->square.y);
+    }
+}
+
+void addTail(){
+    printf("<---------Function Start--------->\n");
+    SnakeSquare *node = &head;
+    int run = 1;
+    int node_counter = 1;
+    while(run){
+        printf("Node %d -- X: %d  Y: %d --- LX: %d  LY: %d\n", node_counter++, (*node).square.x, (*node).square.y, node->lastSquare.x, node->lastSquare.y);
+        if(node->next == NULL){
+            run = 0;
+        }
+        else{
+            node = node->next;
+        }
+    } 
+    Square s = {node->lastSquare.x, node->lastSquare.y};
+    Square ls = {0,0};
+    SnakeSquare *tail = malloc(sizeof(SnakeSquare));
+    tail->square = s;
+    tail->lastSquare = ls;
+    tail->next = NULL;
+    node->next = tail;
+
+    
+    printf("<---------Function End--------->\n\n\n");
+}
 
 int boundaryCollision(){
-    if(head.x < 0 || head.x >= CLIENT_AREA_WIDTH || head.y < 0 || head.y >= CLIENT_AREA_HEIGHT)
+    int snakeX = head.square.x;
+    int snakeY = head.square.y;
+    if(snakeX < 0 || snakeX >= CLIENT_AREA_WIDTH || snakeY < 0 || snakeY >= CLIENT_AREA_HEIGHT)
         return 1;
     return 0;
 }
 
 int insideCol(int x){
-    if(x >= head.x && x <= head.x+SNAKE_SQUARE_LENGTH)
+    int snakeX = head.square.x;
+    if(x >= snakeX && x <= snakeX+SNAKE_SQUARE_LENGTH)
         return 1;
     return 0;
 }
 
 int insideRow(int y){
-    if(y >= head.y && y <= head.y+SNAKE_SQUARE_LENGTH)
+    int snakeY = head.square.y;
+    if(y >= snakeY && y <= snakeY+SNAKE_SQUARE_LENGTH)
         return 1;
     return 0;
 }
@@ -76,31 +141,89 @@ CollisionType checkCollision(){
 }
 
 
-void clearScreen(HWND hwnd){
-    HBRUSH backgroundBrush = CreateSolidBrush(BACKGROUND_COLOUR);
+void clearScreen(){
     RECT fullBackground;
     GetClientRect(hwnd, &fullBackground);
-    FillRect(GetDC(hwnd), &fullBackground, backgroundBrush);
-    DeleteObject(backgroundBrush);
+    FillRect(hdc, &fullBackground, backgroundBrush);
+}
+
+
+void render(){
+    clearScreen();
+    SelectObject(hdc, foodBrush);
+    Rectangle(hdc, food.x, food.y, food.x+FOOD_SQUARE_LENGTH, food.y+FOOD_SQUARE_LENGTH);
+    SelectObject(hdc, snakeBrush);
+    Rectangle(hdc, head.square.x,head.square.y,head.square.x+SNAKE_SQUARE_LENGTH,head.square.y+SNAKE_SQUARE_LENGTH);
+
+    SnakeSquare *node = &head;
+    while(node->next != NULL){
+        node = node->next;
+        Rectangle(hdc, node->square.x,node->square.y,node->square.x+SNAKE_SQUARE_LENGTH,node->square.y+SNAKE_SQUARE_LENGTH);
+    }   
+}
+
+void moveto(int x, int y){
+    head.lastSquare = head.square;
+    head.square.x = x;
+    head.square.y = y;
+
+    SnakeSquare *node = &head;
+    while(node->next != NULL){
+        node->next->lastSquare.x = node->next->square.x;
+        node->next->lastSquare.y = node->next->square.y;
+        node->next->square.x = node->lastSquare.x;
+        node->next->square.y = node->lastSquare.y;
+        node = node->next;
+    }
+    render();
+}
+
+int update(){
+
+    //Move Snake, set key_down=0 to not have quick movment
+    if(key_down[DOWN]){
+        key_down[DOWN]=0;
+        moveto(head.square.x, head.square.y + SNAKE_SQUARE_LENGTH); 
+    }
+    if(key_down[UP]){
+        key_down[UP]=0;
+        moveto(head.square.x, head.square.y - SNAKE_SQUARE_LENGTH);
+    }
+    if(key_down[RIGHT]){
+        key_down[RIGHT]=0;
+        moveto(head.square.x + SNAKE_SQUARE_LENGTH, head.square.y); 
+    }
+    if(key_down[LEFT]){
+        key_down[LEFT]=0;
+        moveto(head.square.x - SNAKE_SQUARE_LENGTH, head.square.y); 
+    }
+
+
+    switch(checkCollision()){
+        case BOUNDARY:
+            return 0;
+        case FOOD:
+            //Food eaten -> increase score, clear screen to remove food, get coords new food, add another square to snake.
+            game_score++;
+            food.x = rand()%(CLIENT_AREA_WIDTH-FOOD_SQUARE_LENGTH);
+            food.y = rand()%(CLIENT_AREA_HEIGHT-FOOD_SQUARE_LENGTH);
+            addTail();
+            render();
+            printf("Game_Score: %d\n", game_score);
+    }
+
+
+    return 1;
 }
 
 //Window Procedure
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
     switch(msg){
         case WM_KEYDOWN:
-            if(wParam == VK_DOWN){
-                head.y = head.y + SNAKE_SQUARE_LENGTH;
-            }
-            else if(wParam == VK_UP){
-                head.y = head.y - SNAKE_SQUARE_LENGTH;
-            }
-            else if(wParam == VK_RIGHT){
-                head.x = head.x + SNAKE_SQUARE_LENGTH;
-            }
-            else if(wParam == VK_LEFT){
-                head.x = head.x - SNAKE_SQUARE_LENGTH;
-            }
-            clearScreen(hwnd);
+            if(wParam == VK_DOWN){key_down[DOWN]=1;}
+            else if(wParam == VK_UP){key_down[UP]=1;}
+            else if(wParam == VK_RIGHT){key_down[RIGHT]=1;}
+            else if(wParam == VK_LEFT){key_down[LEFT]=1;}
             break;
         case WM_CLOSE:
             DestroyWindow(hwnd);
@@ -116,10 +239,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow){
     WNDCLASSEX wc;
-    HWND hwnd;
     MSG Msg;
 
-    HBRUSH backgroundBrush = CreateSolidBrush(BACKGROUND_COLOUR);
+    backgroundBrush = CreateSolidBrush(BACKGROUND_COLOUR);
 
     //Registering the Window Class
     wc.cbSize        = sizeof(WNDCLASSEX);
@@ -159,50 +281,36 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
 
-    HDC hdc = GetDC(hwnd);
-    HBRUSH snakeBrush = CreateSolidBrush(SNAKE_COLOUR);
-    HBRUSH foodBrush = CreateSolidBrush(FOOD_COLOUR);
+    hdc = GetDC(hwnd);
+    snakeBrush = CreateSolidBrush(SNAKE_COLOUR);
+    foodBrush = CreateSolidBrush(FOOD_COLOUR);
 
     
     //Snake starting point + food starting point
-    head.x = 0;
-    head.y = 0;
+    head.square.x = 0;
+    head.square.y = 0;
+    head.next = NULL;
     food.x = rand()%(CLIENT_AREA_WIDTH-FOOD_SQUARE_LENGTH);
     food.y = rand()%(CLIENT_AREA_HEIGHT-FOOD_SQUARE_LENGTH);
 
     game_score = 0;
-    
+
     //Game loop
-    int run = 1;
-    while(run){
+    int game_over = 1;
+    int quit = 1;
+    render();
+    while(game_over && quit){
         //The Message Loop
         while(PeekMessage(&Msg, NULL, 0, 0, PM_REMOVE)){
             if(Msg.message == WM_QUIT)
-                run = 0;
+                quit = 0;
             TranslateMessage(&Msg);
             DispatchMessage(&Msg);
         }
-
-        SelectObject(hdc, snakeBrush);
-        Rectangle(hdc, head.x,head.y,head.x+SNAKE_SQUARE_LENGTH,head.y+SNAKE_SQUARE_LENGTH);
-
-        SelectObject(hdc, foodBrush);
-        Rectangle(hdc, food.x, food.y, food.x+FOOD_SQUARE_LENGTH, food.y+FOOD_SQUARE_LENGTH);
-        
-        switch(checkCollision()){
-            case BOUNDARY:
-                run = 0;
-                break;
-            case FOOD:
-                clearScreen(hwnd);
-                game_score++;
-                printf("Game_Score: %d\n", game_score);
-                food.x = rand()%(CLIENT_AREA_WIDTH-FOOD_SQUARE_LENGTH);
-                food.y = rand()%(CLIENT_AREA_HEIGHT-FOOD_SQUARE_LENGTH);
-
-        }
+        game_over = update();
     }
 
+    DeleteObject(foodBrush);
     DeleteObject(snakeBrush);
     DeleteObject(backgroundBrush);
 
