@@ -16,11 +16,9 @@ const int FOOD_SQUARE_LENGTH = SNAKE_SQUARE_LENGTH/2; //Length of food square
 
 //Colours of stuff
 const COLORREF BACKGROUND_COLOUR = RGB(0,0,0);
-const COLORREF SNAKE_COLOUR = RGB(200,200,0);
 const COLORREF FOOD_COLOUR = RGB(255,0,0);
 
 HBRUSH backgroundBrush;
-HBRUSH snakeBrush;
 HBRUSH foodBrush;
 
 
@@ -30,6 +28,7 @@ typedef struct square {
 } Square;
 
 typedef struct snakeSquare {
+    COLORREF colour;
     Square square; //details of square
     Square lastSquare;//Prior position of square
     struct snakeSquare* next; //next snake square if any.
@@ -66,6 +65,7 @@ void addTail(){
     Square s = {node->lastSquare.x, node->lastSquare.y};
     Square ls = {0,0};
     SnakeSquare *tail = malloc(sizeof(SnakeSquare));
+    tail->colour = RGB(rand()%256,rand()%256,rand()%256);
     tail->square = s;
     tail->lastSquare = ls;
     tail->next = NULL;
@@ -139,13 +139,18 @@ void render(){
     clearScreen();
     SelectObject(hdc, foodBrush);
     Rectangle(hdc, food.x, food.y, food.x+FOOD_SQUARE_LENGTH, food.y+FOOD_SQUARE_LENGTH);
+    HBRUSH snakeBrush = CreateSolidBrush(head.colour);
     SelectObject(hdc, snakeBrush);
     Rectangle(hdc, head.square.x,head.square.y,head.square.x+SNAKE_SQUARE_LENGTH,head.square.y+SNAKE_SQUARE_LENGTH);
+    DeleteObject(snakeBrush);
 
     SnakeSquare *node = &head;
     while(node->next != NULL){
         node = node->next;
+        HBRUSH snakeBrush = CreateSolidBrush(node->colour);
+        SelectObject(hdc, snakeBrush);
         Rectangle(hdc, node->square.x,node->square.y,node->square.x+SNAKE_SQUARE_LENGTH,node->square.y+SNAKE_SQUARE_LENGTH);
+        DeleteObject(snakeBrush);
     }   
 }
 
@@ -280,11 +285,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     UpdateWindow(hwnd);
 
     hdc = GetDC(hwnd);
-    snakeBrush = CreateSolidBrush(SNAKE_COLOUR);
     foodBrush = CreateSolidBrush(FOOD_COLOUR);
 
     
     //Snake starting point + food starting point
+    head.colour = RGB(rand()%256,rand()%256,rand()%256);
     head.square.x = 0;
     head.square.y = 0;
     head.next = NULL;
@@ -310,8 +315,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         game_over = update();
     }
 
+    //freeing memory after use
+    SnakeSquare *node = &head;
+    while(node->next != NULL){
+        SnakeSquare *savedNextNode = node->next;
+        free(node->next); //finished with SnakeSquare heap addresses
+        node->next = NULL; //Remove danging pointers.
+        node = savedNextNode;
+    }
+
     DeleteObject(foodBrush);
-    DeleteObject(snakeBrush);
     DeleteObject(backgroundBrush);
 
     return Msg.wParam;
