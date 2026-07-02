@@ -52,6 +52,8 @@ typedef enum{
 int game_score;
 SnakeSquare head;
 Square food;
+KEYDOWN direction;
+DWORD lastMoveTime;
 
 int key_down[sizeof(KEYDOWN)];
 
@@ -75,7 +77,8 @@ int tailCollision(){
     while(node->next != NULL){
         node = node->next;
         //if coords are same its a hit
-        if(node->square.x == head.square.x && node->square.y == head.square.y)return 1;
+        if(node->square.x == head.square.x && node->square.y == head.square.y)
+            return 1;
     }
     return 0;
 }
@@ -160,24 +163,32 @@ void moveto(int x, int y){
         node = node->next;
     }
     render();
+    lastMoveTime = GetTickCount();
 }
 
 int update(){
+    if(GetTickCount() - lastMoveTime >= 250){
+        key_down[direction]=1; //press down the last pressed key to continue movement
+    }
 
     //Move Snake, set key_down=0 to not have quick movment
     if(key_down[DOWN]){
+        direction = DOWN;
         key_down[DOWN]=0;
         moveto(head.square.x, head.square.y + SNAKE_SQUARE_LENGTH); 
     }
     if(key_down[UP]){
+        direction = UP;
         key_down[UP]=0;
         moveto(head.square.x, head.square.y - SNAKE_SQUARE_LENGTH);
     }
     if(key_down[RIGHT]){
+        direction = RIGHT;
         key_down[RIGHT]=0;
         moveto(head.square.x + SNAKE_SQUARE_LENGTH, head.square.y); 
     }
     if(key_down[LEFT]){
+        direction = LEFT;
         key_down[LEFT]=0;
         moveto(head.square.x - SNAKE_SQUARE_LENGTH, head.square.y); 
     }
@@ -185,6 +196,7 @@ int update(){
 
     switch(checkCollision()){
         case BOUNDARY:
+            printf("<------Boundary hit------>\n");
             return 0;
         case FOOD:
             //Food eaten -> increase score, clear screen to remove food, get coords new food, add another square to snake.
@@ -196,10 +208,9 @@ int update(){
             printf("Game_Score: %d\n", game_score);
             break;
         case TAIL:
+            printf("<------Tail Eaten------>\n");
             return 0;
     }
-
-
     return 1;
 }
 
@@ -281,6 +292,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     food.y = rand()%(CLIENT_AREA_HEIGHT-FOOD_SQUARE_LENGTH);
 
     game_score = 0;
+    direction = RIGHT;
+    lastMoveTime = GetTickCount();
 
     //Game loop
     int game_over = 1;
@@ -303,4 +316,3 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     return Msg.wParam;
 }
-
