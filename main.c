@@ -38,7 +38,8 @@ typedef struct snakeSquare {
 typedef enum{
     NONE,
     BOUNDARY,
-    FOOD
+    FOOD,
+    TAIL
 } CollisionType;
 
 typedef enum{
@@ -56,34 +57,10 @@ int key_down[sizeof(KEYDOWN)];
 
 
 
-
-
-
-void printSnake(){
-    printf("Last Square:   X: %d  Y: %d\n", head.lastSquare.x, head.lastSquare.y);
-    printf("Current Square:   X: %d Y: %d\n\n", head.square.x, head.square.y);
-
-    if(head.next != NULL){
-        SnakeSquare *node = head.next;
-        printf("Tail Last Square:   X: %d  Y: %d\n", node->lastSquare.x, node->lastSquare.y);
-        printf("Tail Current Square:   X: %d Y: %d\n\n", node->square.x, node->square.y);
-    }
-}
-
 void addTail(){
-    printf("<---------Function Start--------->\n");
     SnakeSquare *node = &head;
-    int run = 1;
-    int node_counter = 1;
-    while(run){
-        printf("Node %d -- X: %d  Y: %d --- LX: %d  LY: %d\n", node_counter++, (*node).square.x, (*node).square.y, node->lastSquare.x, node->lastSquare.y);
-        if(node->next == NULL){
-            run = 0;
-        }
-        else{
-            node = node->next;
-        }
-    } 
+    while(node->next != NULL){node = node->next;}
+
     Square s = {node->lastSquare.x, node->lastSquare.y};
     Square ls = {0,0};
     SnakeSquare *tail = malloc(sizeof(SnakeSquare));
@@ -91,9 +68,16 @@ void addTail(){
     tail->lastSquare = ls;
     tail->next = NULL;
     node->next = tail;
+}
 
-    
-    printf("<---------Function End--------->\n\n\n");
+int tailCollision(){
+    SnakeSquare *node = &head;
+    while(node->next != NULL){
+        node = node->next;
+        //if coords are same its a hit
+        if(node->square.x == head.square.x && node->square.y == head.square.y)return 1;
+    }
+    return 0;
 }
 
 int boundaryCollision(){
@@ -137,16 +121,16 @@ CollisionType checkCollision(){
         return BOUNDARY;
     else if(foodCollision())
         return FOOD;
+    else if(tailCollision())
+        return TAIL;
     return NONE;
 }
-
 
 void clearScreen(){
     RECT fullBackground;
     GetClientRect(hwnd, &fullBackground);
     FillRect(hdc, &fullBackground, backgroundBrush);
 }
-
 
 void render(){
     clearScreen();
@@ -210,6 +194,9 @@ int update(){
             addTail();
             render();
             printf("Game_Score: %d\n", game_score);
+            break;
+        case TAIL:
+            return 0;
     }
 
 
