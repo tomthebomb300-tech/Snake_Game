@@ -315,6 +315,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         game_over = update();
     }
 
+    RECT rect;
+    GetClientRect(hwnd, &rect);
+    DrawText(hdc, "GAME OVER", -1, &rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    Sleep(2000);
+
     //freeing memory after use
     SnakeSquare *node = &head;
     while(node->next != NULL){
